@@ -1,40 +1,13 @@
 library(tidyverse)
 library(ape)
 library(XML)
-
-get_word_positions <- function(file){
-  nex <- readLines(file)
-  p1 <- grep("begin assumptions;", nex)
-  pend <- grep("end;", nex, ignore.case = T)
-  p2 <- pend[pend>p1][1]
-  parts <- nex[(p1+1):(p2-1)]
-  parts <- gsub("\tcharset ", "", parts)
-  parts <- gsub(" = ", "\t", parts)
-  parts <- gsub("-", "\t", parts)
-  parts <- gsub(";", "", parts)
-  wp <- str_split_fixed(parts, "\t", 3)
-  wp <- as.data.frame(wp)
-  wp[,2] <- as.numeric(wp[,2])
-  wp[,3] <- as.numeric(wp[,3])
-  return(wp)
-}
-
-get_word_names <- function(file){
-  nex <- readLines(file)
-  p1 <- grep("CHARSTATELABELS", nex)
-  pend <- grep(";", nex)
-  p2 <- pend[pend>p1][1]
-  names <- nex[(p1+1):(p2-1)]
-  names <- gsub(" {2,}", "", names)
-  names <- gsub(",", "", names)
-  wn <- str_split_fixed(names, " ", 2)
-  wn <- wn[,2]
-}
+library(devtools)
+source_url("https://raw.githubusercontent.com/king-ben/R-functions/master/asr_functions.R")
 
 
 multistate_xml <- function(file){
-  wp <- get_word_positions(file)
-  wn <- get_word_names(file)
+  wp <- find_partitions(file)
+  wn <- find_site_names(file)
   d <- read.nexus.data(file)
   n <- length(d)
   #get mutation rates
@@ -122,4 +95,15 @@ multistate_xml <- function(file){
   out <- list(likelihood, mutationratesoperator, logger, operators, freqlogger, state, codemaplist)
   names(out) <- c("likelihood", "mutationrates_operator", "mutationrates_logger", "frequency_operators", "frequency_logger", "state", "codemap")
   return(out)
+}
+
+saveall_multistate <- function(xml){
+  saveXML(xml$likelihood, "likelihood.xml")
+  saveXML(xml$mutationrates_operator, "mutationratesoperator.xml")
+  saveXML(xml$mutationrates_logger, "mutationrateslogger.xml")
+  saveXML(xml$state, "state.xml")
+  saveXML(xml$frequency_operators, "frequency_operators.xml")
+  saveXML(xml$frequency_logger, "frequency_logger.xml")
+  codemap <- xml$codemap
+  save(codemap, file="codempa.Rdata")
 }
